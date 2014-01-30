@@ -41,8 +41,18 @@
 		 stage = st.stage;		 
 		 var Test = function (name,st){			 
 			 App.call(this,name,st);			 
-			 var win = elementFactory.create("window",{app:this,name:"MainApp",x:5,y:5,width:400,height:400});
+			 var win = elementFactory.create("window",{app:this,name:"MainApp",x:5,y:5,size:{w:400,h:400}});
 			 this.addWindow(win);
+			 var v = new VerticalLayout(win.size.w,win.size.h);
+			 win.setLayout(v);
+			 var h = new HorizontalLayout(10,10);
+			 h.add(new Button("test1",0,0,100,100),"50%");
+			 h.add(new Button("test1",0,0,100,100),"50%");
+			 
+			  v.add(new Button("test",0,0,100,100),"50px");
+			  v.add(h,"100%");
+			  v.add(new Button("test1",0,0,100,100),"20px");
+			 
 		 };
 		 Test.prototype = new App();
 		 Test.prototype.constuctor = Test;		 

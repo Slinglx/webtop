@@ -152,14 +152,16 @@ App.prototype.removeWindow = function (win) {
 var Element = function(name){
 	Base.call(this);
 	this.pinned = new Array();			// pinned elements on this	
+	this.layout = null;
 	this.group = new Kinetic.Group({
        draggable: false,        
     });
 	this.base = null;					// base Grafical element
-	this.size = {x:100,y:100};			// start size	
+	this.size = {w:100,h:100};			// start size	
 	this.name = name;					// Elements name
 	this.value = null;					// Elements Value
 	this.att = [];						// other Attributes	
+	this.pos = {x:0,y:0};
 
 };
 
@@ -185,7 +187,10 @@ Element.prototype.constructor = Element;
 	Element.prototype.move = function(newpos){				
 		this.getGroup().move(newpos);		
 	};
-	Element.prototype.resize = function(newSize){		
+	Element.prototype.moveTo = function(newpos){						
+		this.getGroup().position(newpos);		
+	};
+	Element.prototype.setSize = function(newSize){		
 		
 	};
 
@@ -193,7 +198,7 @@ Element.prototype.constructor = Element;
 		this.group.on(event,funktion);
 	};
 	Element.prototype.draggable = function(b) {this.group.draggable(b);};
-
+    Element.prototype.setLayout = function(l) {this.layout = l;};
 // ElementFactory prduces various Elements
 var ElementFactory = function(){
 	
@@ -205,12 +210,38 @@ ElementFactory.prototype.constructor = ElementFactory;
 	};
 	
 //Button 
-var Button = function (name){
+var Button = function (name,x,y,w,h){
 	Element.call(this,name);
+	this.size.w = w;
+	this.size.h = h;
+	this.pos.x = x;
+	this.pos.y = y;
+		this.rect = new Kinetic.Rect({
+			x:this.pos.x,
+			y:this.pos.y,
+			width:this.size.w,
+			height:this.size.h,
+			fill:'rgba(100,100,170,1)',			
+			draggable:false,
+			shadowColor: 'black',
+			shadowBlur: 10,
+			shadowOffset: {x:0,y:0},
+			shadowOpacity: 0.5,
+			cornerRadius:3	
+		});				
+		this.group.move({x:x,y:y});	
+		this.group.draggable(false);
+		this.group.add(this.rect);			
+	if (w > 0 && h > 0)this.rect.visible(true); else this.rect.visible(false);
 };
 Button.prototype = new Element();
 Button.prototype.constructor = Button;
-
+	Button.prototype.setSize = function(w,h){
+		this.size = {w:w,h:h};		
+		this.rect.width(w);
+		this.rect.height(h);
+		stage.draw();		
+	};
 // FullScreen Button for windows
 var FSButton = function(x,y) {
 	Button.call(this,"FSButton");
@@ -228,6 +259,8 @@ var FSButton = function(x,y) {
 		shadowOpacity: 0.5,
 		cornerRadius:3	
 	});		
+	this.pos = {x:x,y:y};
+	this.size = {w:15,h:15};
 	this.group.move({x:x,y:y});	
 	this.group.draggable(false);
 	this.group.add(rect);	
@@ -263,6 +296,7 @@ var ExitButton = function(x,y) {
 			lineCap: 'round',
 			lineJoin: 'round'
 		});	
+	this.pos = {x:x,y:y};		
 	this.group.move({x:x,y:y});	
 	this.group.draggable(false);
 	this.group.add(exit);	
@@ -335,7 +369,7 @@ ResizeButton.prototype.vis = function(val) {
 	}
 };
 ResizeButton.prototype.drag = function(val){
-	var mousePos = stage.getPointerPosition()
+	var mousePos = stage.getPointerPosition();
 	var w =  mousePos.x-this.win.x;
 	var h =  mousePos.y-this.win.y;	
 	this.dragging = val;
@@ -343,8 +377,8 @@ ResizeButton.prototype.drag = function(val){
 		if (this.win) {
 			this.dragRect.setX(this.win.x);
 			this.dragRect.setY(this.win.y);
-			this.dragRect.setHeight(this.win.height);
-			this.dragRect.setWidth(this.win.width);
+			this.dragRect.setHeight(this.win.size.h);
+			this.dragRect.setWidth(this.win.size.w);
 			this.dragRect.visible(true);
 			this.dragRect.moveToTop();
 			stage.draw();
@@ -378,8 +412,8 @@ Window.prototype.constructor = Window;
 		this.base = new Kinetic.Rect({
 			x:this.x,
 			y:this.y,
-			width:this.width,
-			height:this.height,
+			width:this.size.w,
+			height:this.size.h,
 			fill:'rgba(180,180,255,1)',			
 			shadowColor: 'black',
 			shadowBlur: 10,
@@ -391,7 +425,7 @@ Window.prototype.constructor = Window;
 		this.rect1 = new Kinetic.Rect({
 			x:this.x,
 			y:this.y,
-			width:this.width,
+			width:this.size.w,
 			height:40,
 			fill:'rgba(100,100,170,1)',			
 			cornerRadius:10
@@ -400,7 +434,7 @@ Window.prototype.constructor = Window;
 		this.blend = new Kinetic.Rect({
 			x:this.x,
 			y:this.y+25,
-			width:this.width,
+			width:this.size.w,
 			height:40,
 			fill:'rgba(180,180,255,1)'			
 		});	
@@ -419,18 +453,17 @@ Window.prototype.constructor = Window;
 		});			    		
 		this.add(this.title);		
 		var self = this; 
-		this.fsb = new FSButton(this.x+this.width-50,this.y+5);		
+		this.fsb = new FSButton(this.x+this.size.w-50,this.y+5);		
 		this.fsb.setEvent("mousedown touchstart",function(){self.setFullScreen();});
 		this.pin(this.fsb);			
-		this.exit = new ExitButton(this.x+this.width-25,this.y+5);
+		this.exit = new ExitButton(this.x+this.size.w-25,this.y+5);
 		this.exit.setEvent("mousedown touchstart",function(){self.onExit();});
 		this.pin(this.exit);
-		this.resize = new ResizeButton(this.x+this.width-15,this.height+this.y-15,this);		
+		this.resize = new ResizeButton(this.x+this.size.w-15,this.size.h+this.y-15,this);		
 		this.pin(this.resize);		
 		this.setEvent("mousedown touchstart",function(evt){self.mouseDown(evt);});
 		this.setEvent("mouseup touchend",function(evt){self.mouseUp(evt);});
 		this.setEvent("dragend",function(evt){self.x = self.group.getX();self.y=self.group.getY();});
-		
 	};
 	Window.prototype.mouseUp = function(evt){		
 	};
@@ -481,25 +514,103 @@ Window.prototype.constructor = Window;
 		fx = this.resize.group.getAttr('x');
 		var fy = this.resize.group.getAttr('y');
 		this.resize.move({x:w-10-fx,y:h-10-fy});
-		this.width=w;
-		this.height=h;
+		this.size = {w:w,h:h};
+		this.layout.setSize(w,h-40);
 	};
+	Window.prototype.setLayout = function (l){		
+		this.layout = l;
+		l.x = 5;
+		l.y = 30;
+		l.size = {w:this.size.w,h:this.size.h-40};			
+		l.move({x:l.x,y:l.y});		
+		this.pin(l);
+	}
 	
-	//*/
 //Layout
-Layout = function() {
+Layout = function(w,h) {	
+	this.size = {w:w,h:h};	
 	Element.call(this,"layout");
+	this.container = new Array();
+	var self = this;
+	this.setEvent("mousedown click touchstart",function(evt){self.drag(evt);});
+	
 };
 Layout.prototype = new Element();
 Layout.prototype.constructor = Layout;
 
-HorizontalLayout = function() {
+	Layout.prototype.drag = function(evt) {
+		var mousePos = stage.getPointerPosition();	
+		var w =  mousePos.x-this.group.getX();
+		var h =  mousePos.y-this.group.getY();
+		console.log (h);	
+		if (h > 25) {
+			console.log ("cancleBubble");
+			evt.cancelBubble = true;
+		}
+	};
+	Layout.prototype.add = function(obj,per) { // obj = element per = position
+		this.container.push({obj:obj,pos:per});		
+		this.pin(obj);
+		this.reLayout();		
+		
+		
+	};		
+	Layout.prototype.setSize = function(w,h){
+		this.size.w = w;
+		this.size.h = h;
+		this.reLayout();
+	};
+	Layout.prototype.reLayout = function(){ // relayout container
+	
+	};
+	
+HorizontalLayout = function() {	
+	Layout.call(this,"HorizontalLayout");	
+};
+HorizontalLayout.prototype = new Layout();
+HorizontalLayout.prototype.constructor = 	HorizontalLayout;
+HorizontalLayout.prototype.reLayout = function(){ // obj = element per = position				
+		var self = this;
+		var w = this.size.w;		
+		this.container.forEach(function(el,i,a){						
+			if (el.pos.indexOf("px") != -1) w -= parseInt(el.pos);						// get the avaible height			
+		});
+		var x =0;
+		var ox = 0;
+		this.container.forEach(function(el,i,a){
+			ox = x;
+			el.obj.moveTo({y:el.obj.y,x:x});
+			if (el.pos.indexOf("px") != -1) x += parseInt(el.pos);
+			if (el.pos.indexOf("%") != -1) x += parseInt(el.pos)/100*w;			
+			el.obj.setSize(x-ox,self.size.h);
+		});
+				
+	}
+
+
+VerticalLayout = function() {	
 	Layout.call(this,"HorizontalLayout");
 };
-HorizontalLayout.prototype = new Element();
-HorizontalLayout.prototype.constructor = Layout;
-
-
+VerticalLayout.prototype = new Layout();
+VerticalLayout.prototype.constructor = VerticalLayout;
+	VerticalLayout.prototype.reLayout = function(){ // obj = element per = position					
+		var self = this;
+		var h = this.size.h;		
+		this.container.forEach(function(el,i,a){						
+			if (el.pos.indexOf("px") != -1) h -= parseInt(el.pos);						// get the avaible height			
+		});
+		var y =0;
+		var oy = 0;
+		this.container.forEach(function(el,i,a){
+			oy = y;
+			el.obj.moveTo({x:el.obj.x,y:y});
+			if (el.pos.indexOf("px") != -1) y += parseInt(el.pos);
+			if (el.pos.indexOf("%") != -1) y += parseInt(el.pos)/100*h;				
+			el.obj.setSize(self.size.w,y-oy);
+		});
+				
+	}
+	
 
 /** init Kinetic and Drawing area**/		
 
